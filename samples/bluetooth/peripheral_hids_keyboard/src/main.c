@@ -514,49 +514,71 @@ static void hid_init(void)
 	__ASSERT(err == 0, "HIDS initialization failed\n");
 }
 
-static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey)
-{
-	char addr[BT_ADDR_LE_STR_LEN];
+// static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey)
+// {
+//     // 不显示配对码
+//     printk("Just Works pairing\n");
+// }
 
-	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+// static void auth_passkey_confirm(struct bt_conn *conn, unsigned int passkey)
+// {
+//     // 自动确认配对
+//     bt_conn_auth_passkey_confirm(conn);
+//     printk("Just Works pairing confirmed\n");
+// }
 
-	printk("Passkey for %s: %06u\n", addr, passkey);
-}
+// static void auth_cancel(struct bt_conn *conn)
+// {
+//     char addr[BT_ADDR_LE_STR_LEN];
 
-static void auth_passkey_confirm(struct bt_conn *conn, unsigned int passkey)
-{
-	int err;
+//     bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	struct pairing_data_mitm pairing_data;
+//     printk("Pairing cancelled: %s\n", addr);
+// }
 
-	pairing_data.conn    = bt_conn_ref(conn);
-	pairing_data.passkey = passkey;
+// static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey)
+// {
+// 	char addr[BT_ADDR_LE_STR_LEN];
 
-	err = k_msgq_put(&mitm_queue, &pairing_data, K_NO_WAIT);
-	if (err) {
-		printk("Pairing queue is full. Purge previous data.\n");
-	}
+// 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	/* In the case of multiple pairing requests, trigger
-	 * pairing confirmation which needed user interaction only
-	 * once to avoid display information about all devices at
-	 * the same time. Passkey confirmation for next devices will
-	 * be proccess from queue after handling the earlier ones.
-	 */
-	if (k_msgq_num_used_get(&mitm_queue) == 1) {
-		k_work_submit(&pairing_work);
-	}
-}
+// 	printk("Passkey for %s: %06u\n", addr, passkey);
+// }
+
+// static void auth_passkey_confirm(struct bt_conn *conn, unsigned int passkey)
+// {
+// 	int err;
+
+// 	struct pairing_data_mitm pairing_data;
+
+// 	pairing_data.conn    = bt_conn_ref(conn);
+// 	pairing_data.passkey = passkey;
+
+// 	err = k_msgq_put(&mitm_queue, &pairing_data, K_NO_WAIT);
+// 	if (err) {
+// 		printk("Pairing queue is full. Purge previous data.\n");
+// 	}
+
+// 	/* In the case of multiple pairing requests, trigger
+// 	 * pairing confirmation which needed user interaction only
+// 	 * once to avoid display information about all devices at
+// 	 * the same time. Passkey confirmation for next devices will
+// 	 * be proccess from queue after handling the earlier ones.
+// 	 */
+// 	if (k_msgq_num_used_get(&mitm_queue) == 1) {
+// 		k_work_submit(&pairing_work);
+// 	}
+// }
 
 
-static void auth_cancel(struct bt_conn *conn)
-{
-	char addr[BT_ADDR_LE_STR_LEN];
+// static void auth_cancel(struct bt_conn *conn)
+// {
+// 	char addr[BT_ADDR_LE_STR_LEN];
 
-	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+// 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	printk("Pairing cancelled: %s\n", addr);
-}
+// 	printk("Pairing cancelled: %s\n", addr);
+// }
 
 
 #if CONFIG_NFC_OOB_PAIRING
@@ -589,49 +611,49 @@ static void auth_oob_data_request(struct bt_conn *conn,
 #endif
 
 
-static void pairing_complete(struct bt_conn *conn, bool bonded)
-{
-	char addr[BT_ADDR_LE_STR_LEN];
+// static void pairing_complete(struct bt_conn *conn, bool bonded)
+// {
+// 	char addr[BT_ADDR_LE_STR_LEN];
 
-	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+// 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	printk("Pairing completed: %s, bonded: %d\n", addr, bonded);
-}
+// 	printk("Pairing completed: %s, bonded: %d\n", addr, bonded);
+// }
 
 
-static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
-{
-	char addr[BT_ADDR_LE_STR_LEN];
-	struct pairing_data_mitm pairing_data;
+// static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
+// {
+// 	char addr[BT_ADDR_LE_STR_LEN];
+// 	struct pairing_data_mitm pairing_data;
 
-	if (k_msgq_peek(&mitm_queue, &pairing_data) != 0) {
-		return;
-	}
+// 	if (k_msgq_peek(&mitm_queue, &pairing_data) != 0) {
+// 		return;
+// 	}
 
-	if (pairing_data.conn == conn) {
-		bt_conn_unref(pairing_data.conn);
-		k_msgq_get(&mitm_queue, &pairing_data, K_NO_WAIT);
-	}
+// 	if (pairing_data.conn == conn) {
+// 		bt_conn_unref(pairing_data.conn);
+// 		k_msgq_get(&mitm_queue, &pairing_data, K_NO_WAIT);
+// 	}
 
-	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+// 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	printk("Pairing failed conn: %s, reason %d %s\n", addr, reason,
-	       bt_security_err_to_str(reason));
-}
+// 	printk("Pairing failed conn: %s, reason %d %s\n", addr, reason,
+// 	       bt_security_err_to_str(reason));
+// }
 
-static struct bt_conn_auth_cb conn_auth_callbacks = {
-	.passkey_display = auth_passkey_display,
-	.passkey_confirm = auth_passkey_confirm,
-	.cancel = auth_cancel,
-#if CONFIG_NFC_OOB_PAIRING
-	.oob_data_request = auth_oob_data_request,
-#endif
-};
+// static struct bt_conn_auth_cb conn_auth_callbacks = {
+// 	.passkey_display = auth_passkey_display,
+// 	.passkey_confirm = auth_passkey_confirm,
+// 	.cancel = auth_cancel,
+// #if CONFIG_NFC_OOB_PAIRING
+// 	.oob_data_request = auth_oob_data_request,
+// #endif
+// };
 
-static struct bt_conn_auth_info_cb conn_auth_info_callbacks = {
-	.pairing_complete = pairing_complete,
-	.pairing_failed = pairing_failed
-};
+// static struct bt_conn_auth_info_cb conn_auth_info_callbacks = {
+// 	.pairing_complete = pairing_complete,
+// 	.pairing_failed = pairing_failed
+// };
 
 
 /** @brief Function process keyboard state and sends it
@@ -944,17 +966,17 @@ int main(void)
 
 	configure_gpio();
 
-	err = bt_conn_auth_cb_register(&conn_auth_callbacks);
-	if (err) {
-		printk("Failed to register authorization callbacks.\n");
-		return 0;
-	}
+	// err = bt_conn_auth_cb_register(&conn_auth_callbacks);
+	// if (err) {
+	// 	printk("Failed to register authorization callbacks.\n");
+	// 	return 0;
+	// }
 
-	err = bt_conn_auth_info_cb_register(&conn_auth_info_callbacks);
-	if (err) {
-		printk("Failed to register authorization info callbacks.\n");
-		return 0;
-	}
+	// err = bt_conn_auth_info_cb_register(&conn_auth_info_callbacks);
+	// if (err) {
+	// 	printk("Failed to register authorization info callbacks.\n");
+	// 	return 0;
+	// }
 
 	hid_init();
 
