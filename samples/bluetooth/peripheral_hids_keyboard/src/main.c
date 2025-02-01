@@ -956,6 +956,9 @@ static void bas_notify(void)
 	bt_bas_set_battery_level(battery_level);
 }
 
+#define LOG_MODULE_NAME qf
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 int main(void)
 {
@@ -963,7 +966,8 @@ int main(void)
 	int blink_status = 0;
 
 	printk("Starting Bluetooth Peripheral HIDS keyboard example\n");
-
+LOG_INF("RTT Log Initialized!");
+    LOG_DBG("This is a debug log.");
 	configure_gpio();
 
 	// err = bt_conn_auth_cb_register(&conn_auth_callbacks);
