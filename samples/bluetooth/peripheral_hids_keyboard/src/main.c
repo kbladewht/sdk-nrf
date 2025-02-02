@@ -879,6 +879,8 @@ static void bas_notify(void)
 #define UART_DEVICE_NODE DT_NODELABEL(uart0)  // 选择 UART0
 const struct device *uart_dev = DEVICE_DT_GET(UART_DEVICE_NODE);
 
+
+
 int main(void)
 {
 	int err;
@@ -942,8 +944,12 @@ int main(void)
 			uart_poll_out(uart_dev, received_byte);  // 回显数据
 		}
 
-		k_sleep(K_MSEC(ADV_LED_BLINK_INTERVAL));
+		//k_sleep(K_MSEC(ADV_LED_BLINK_INTERVAL));
 		/* Battery level simulation */
-		bas_notify();
+		// bas_notify();
+		    // 进入低功耗模式
+		__WFE();
+		__SEV();
+		__WFE();
 	}
 }
