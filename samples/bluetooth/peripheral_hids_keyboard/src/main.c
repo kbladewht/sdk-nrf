@@ -149,7 +149,7 @@ static const uint8_t shift_key[] = { 225 };
  */
 static struct keyboard_state {
 	uint8_t ctrl_keys_state; /* Current keys state */
-	uint8_t keys_state[KEY_PRESS_MAX];
+	uint8_t keys_state[6];
 } hid_keyboard_state;
 
 #if CONFIG_NFC_OOB_PAIRING
@@ -750,6 +750,25 @@ static void button_text_changed(bool down)
 	}
 }
 
+void print_report_array(const uint8_t *report, size_t size) {
+    printf("Report array: ");
+    for (size_t i = 0; i < size; i++) {
+        printf("%02X ", report[i]);
+    }
+    printf("\n");
+}
+
+
+// uint8_t key[8]={0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+//默认是11位得数据过来
+static void uart_hid_test(uint8_t *report)
+{
+	memcpy(hid_keyboard_state.keys_state, report + 4,6); // copy data array start from index 2 to a new array
+	hid_keyboard_state.ctrl_keys_state = report[2];
+	print_report_array(report, sizeof(report));
+	print_report_array(hid_keyboard_state.keys_state, sizeof(hid_keyboard_state.keys_state));
+	key_report_send();
+}
 
 static void button_shift_changed(bool down)
 {
@@ -877,11 +896,12 @@ static void bas_notify(void)
 #include <zephyr/sys/printk.h>
 // #include <drivers/uart.h>
 
-
+uint8_t key_test[11] = {0xFD,0xFF,0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00,0x00};
+uint8_t key_test_release[11] = {0xFD,0xFF,0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,0x00};
 
 #define UART_DEVICE_NODE DT_NODELABEL(uart0)  // 选择 UART0
 const struct device *uart_dev = DEVICE_DT_GET(UART_DEVICE_NODE);
-
+bool send_flag = false;
 static void uart_callback(const struct device *dev, void *user_data) {
     uint8_t c;
 
@@ -889,7 +909,8 @@ static void uart_callback(const struct device *dev, void *user_data) {
     while (uart_irq_update(dev) && uart_irq_rx_ready(dev)) {
         uart_fifo_read(dev, &c, 1);
         printk("Received: %c\n", c);
-	uart_poll_out(uart_dev, c);  // 回显数据
+	//uart_poll_out(uart_dev, c);
+	send_flag = true;
     }
 }
 
@@ -953,7 +974,15 @@ int main(void)
 		} else {
 			dk_set_led_off(ADV_STATUS_LED);
 		}
-
+		if(send_flag == true){
+			uart_hid_test(key_test);
+			send_flag = false;
+		}else{
+			if (memcmp(hid_keyboard_state.keys_state, "\0\0\0\0\0\0", 6) != 0) {
+				print_report_array(hid_keyboard_state.keys_state,sizeof(hid_keyboard_state.keys_state));
+				uart_hid_test(key_test_release);
+			}
+		}
 
 		//k_sleep(K_MSEC(ADV_LED_BLINK_INTERVAL));
 		/* Battery level simulation */
