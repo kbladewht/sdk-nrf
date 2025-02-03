@@ -875,23 +875,11 @@ static void bas_notify(void)
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
 #include <zephyr/sys/printk.h>
-// #include <drivers/uart.h>
-
-
 
 #define UART_DEVICE_NODE DT_NODELABEL(uart0)  // 选择 UART0
 const struct device *uart_dev = DEVICE_DT_GET(UART_DEVICE_NODE);
 
-static void uart_callback(const struct device *dev, void *user_data) {
-    uint8_t c;
 
-    /* 检查是否有数据可读取 */
-    while (uart_irq_update(dev) && uart_irq_rx_ready(dev)) {
-        uart_fifo_read(dev, &c, 1);
-        printk("Received: %c\n", c);
-	uart_poll_out(uart_dev, c);  // 回显数据
-    }
-}
 
 int main(void)
 {
@@ -919,10 +907,6 @@ int main(void)
 	}
 
 	printk("UART initialized successfully\n");
-
-	uart_irq_callback_set(uart_dev, uart_callback);
-    uart_irq_rx_enable(uart_dev);
-     printk("UART receiver started.\n");
 
 	hid_init();
 
@@ -954,6 +938,11 @@ int main(void)
 			dk_set_led_off(ADV_STATUS_LED);
 		}
 
+		uint8_t received_byte;
+		if (uart_poll_in(uart_dev, &received_byte) == 0) {
+			printk("uart Received %c\n",received_byte);
+			uart_poll_out(uart_dev, received_byte);  // 回显数据
+		}
 
 		//k_sleep(K_MSEC(ADV_LED_BLINK_INTERVAL));
 		/* Battery level simulation */
