@@ -6,6 +6,7 @@
 
 #include <zephyr/types.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <zephyr/sys/printk.h>
@@ -28,6 +29,7 @@
 #include <bluetooth/services/hids.h>
 #include <zephyr/bluetooth/services/dis.h>
 #include <dk_buttons_and_leds.h>
+#include <sys/_stdint.h>
 
 #define UART_DEVICE_NAME "UART_0"
 #include "app_nfc.h"
@@ -898,6 +900,10 @@ static void bas_notify(void)
 
 uint8_t key_test[11] = {0xFD,0xFF,0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00,0x00};
 uint8_t key_test_release[11] = {0xFD,0xFF,0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,0x00};
+static struct k_poll_signal uart_signal = K_POLL_SIGNAL_INITIALIZER(uart_signal);
+static struct k_poll_event events[] = {
+    K_POLL_EVENT_INITIALIZER(K_POLL_TYPE_SIGNAL, K_POLL_MODE_NOTIFY_ONLY, &uart_signal),
+};
 
 #define UART_DEVICE_NODE DT_NODELABEL(uart0)  // 选择 UART0
 const struct device *uart_dev = DEVICE_DT_GET(UART_DEVICE_NODE);
@@ -911,6 +917,7 @@ static void uart_callback(const struct device *dev, void *user_data) {
         printk("Received: %c\n", c);
 	//uart_poll_out(uart_dev, c);
 	send_flag = true;
+	k_poll_signal_raise(&uart_signal, c);  // 触发信号
     }
 }
 
@@ -967,8 +974,13 @@ int main(void)
 // #endif
 
 	k_work_init(&pairing_work, pairing_process);
-
+	uint32_t count=0;
 	for (;;) {
+
+
+
+
+
 		if (is_adv) {
 			dk_set_led(ADV_STATUS_LED, (++blink_status) % 2);
 		} else {
@@ -977,6 +989,8 @@ int main(void)
 		if(send_flag == true){
 			uart_hid_test(key_test);
 			send_flag = false;
+			k_sleep(K_MSEC(ADV_LED_BLINK_INTERVAL));
+			uart_hid_test(key_test_release);
 		}else{
 			if (memcmp(hid_keyboard_state.keys_state, "\0\0\0\0\0\0", 6) != 0) {
 				print_report_array(hid_keyboard_state.keys_state,sizeof(hid_keyboard_state.keys_state));
@@ -984,12 +998,18 @@ int main(void)
 			}
 		}
 
+		 printk("Waiting for UART data...\n");
+        k_poll(events, 1, K_FOREVER);  // 进入低功耗等待，直到 UART 触发
+        printk("Received UART data: %d\n", events[0].signal->result);
+        k_poll_signal_reset(&uart_signal);
 		//k_sleep(K_MSEC(ADV_LED_BLINK_INTERVAL));
 		/* Battery level simulation */
 		// bas_notify();
 		    // 进入低功耗模式
-		__WFE();
-		__SEV();
-		__WFE();
+		    printf("go wfe %d\n",count++);
+		printf("Entering sleep mode\n");
+		// k_sleep(K_MSEC(ADV_LED_BLINK_INTERVAL));
+		//k_sleep(K_FOREVER); // 进入深度睡眠，直到中断唤醒
+		printf("Woke up from sleep\n");
 	}
 }
